@@ -1,0 +1,1223 @@
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>株式会社料理かしば｜顧客取引データベース</title>
+<style>
+
+        @import url('https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@500;600&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap');
+
+        html, body {
+          margin: 0;
+          height: 100%;
+          background: #F5F3EE;
+        }
+        #root { min-height: 100vh; display: flex; }
+        .cms-app {
+          --bg: #F5F3EE;
+          --surface: #FFFFFF;
+          --ink: #2A2722;
+          --ink-soft: #6E6A60;
+          --line: #DEDACD;
+          --line-soft: #EAE7DC;
+          --accent: #A93A2C;
+          --accent-soft: #F3E2DD;
+          --accent-ink: #7A2A1F;
+          --green: #4E6B4C;
+          --green-soft: #E4EBE0;
+          font-family: 'Zen Kaku Gothic New', 'Hiragino Kaku Gothic ProN', sans-serif;
+          background: var(--bg);
+          color: var(--ink);
+          min-height: 100vh;
+          width: 100%;
+          overflow: hidden;
+          display: flex;
+          flex-direction: column;
+        }
+        .cms-sync-error {
+          background: #7A2A1F; color: #fff; font-size: 12.5px; padding: 8px 16px; text-align: center;
+        }
+        .cms-app * { box-sizing: border-box; }
+        .cms-display { font-family: 'Shippori Mincho', serif; }
+
+        .cms-topbar {
+          display: flex; align-items: center; justify-content: space-between;
+          gap: 12px; padding: 16px 20px; background: var(--ink); color: #F5F3EE;
+          flex-wrap: wrap;
+        }
+        .cms-topbar__title { display: flex; flex-direction: column; gap: 2px; }
+        .cms-topbar__title h1 { margin: 0; font-size: 19px; font-weight: 600; letter-spacing: .02em; }
+        .cms-topbar__title p { margin: 0; font-size: 11.5px; color: #C9C4B8; letter-spacing: .04em; }
+        .cms-btn {
+          display: inline-flex; align-items: center; gap: 6px;
+          border-radius: 7px; border: 1px solid transparent; cursor: pointer;
+          font-family: inherit; font-size: 13px; font-weight: 500; padding: 8px 14px;
+          transition: filter .12s ease, background .12s ease; white-space: nowrap;
+        }
+        .cms-btn:active { transform: translateY(1px); }
+        .cms-btn--accent { background: var(--accent); color: #fff; }
+        .cms-btn--accent:hover { filter: brightness(1.08); }
+        .cms-btn--ghost-dark { background: rgba(255,255,255,.08); color: #F5F3EE; border-color: rgba(255,255,255,.18); }
+        .cms-btn--ghost-dark:hover { background: rgba(255,255,255,.14); }
+        .cms-btn--ghost { background: transparent; color: var(--ink); border-color: var(--line); }
+        .cms-btn--ghost:hover { background: var(--line-soft); }
+        .cms-btn--danger { background: transparent; color: var(--accent-ink); border-color: var(--accent-soft); }
+        .cms-btn--danger:hover { background: var(--accent-soft); }
+        .cms-btn--sm { padding: 5px 10px; font-size: 12px; }
+        .cms-btn:disabled { opacity: .4; cursor: not-allowed; }
+
+        .cms-body { display: flex; flex: 1; min-height: 0; }
+
+        .cms-list-pane {
+          width: 300px; flex-shrink: 0; border-right: 1px solid var(--line);
+          background: var(--surface); display: flex; flex-direction: column;
+        }
+        .cms-tabs { display: flex; border-bottom: 1px solid var(--line); }
+        .cms-tab {
+          flex: 1; padding: 12px 8px; text-align: center; font-size: 12.5px; font-weight: 500;
+          color: var(--ink-soft); cursor: pointer; border-bottom: 2px solid transparent; background: none; border-top:none;border-left:none;border-right:none;
+          font-family: inherit;
+        }
+        .cms-tab--active { color: var(--accent-ink); border-bottom-color: var(--accent); }
+        .cms-tab__count { display:inline-block; margin-left:4px; color: var(--ink-soft); }
+
+        .cms-search { position: relative; padding: 10px 12px; border-bottom: 1px solid var(--line-soft); }
+        .cms-search input {
+          width: 100%; padding: 7px 10px 7px 30px; border-radius: 6px; border: 1px solid var(--line);
+          font-size: 13px; font-family: inherit; background: var(--bg); color: var(--ink);
+        }
+        .cms-search input:focus { outline: 2px solid var(--accent-soft); border-color: var(--accent); }
+        .cms-search svg { position: absolute; left: 22px; top: 19px; color: var(--ink-soft); }
+
+        .cms-add-row { padding: 10px 12px; border-bottom: 1px solid var(--line-soft); }
+        .cms-add-row .cms-btn { width: 100%; justify-content: center; }
+
+        .cms-list { flex: 1; overflow-y: auto; }
+        .cms-list-item {
+          padding: 12px 14px; border-bottom: 1px solid var(--line-soft); cursor: pointer;
+        }
+        .cms-list-item:hover { background: var(--bg); }
+        .cms-list-item--selected { background: var(--accent-soft); }
+        .cms-list-item__name { font-size: 13.5px; font-weight: 500; margin: 0 0 3px; }
+        .cms-list-item__sub { font-size: 11.5px; color: var(--ink-soft); margin: 0; display:flex; gap:8px; align-items:center; }
+        .cms-list-empty { padding: 40px 20px; text-align: center; color: var(--ink-soft); font-size: 13px; }
+
+        .cms-detail-pane { flex: 1; overflow-y: auto; background: var(--bg); min-width: 0; }
+        .cms-detail-empty {
+          height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center;
+          color: var(--ink-soft); gap: 10px; text-align: center; padding: 40px;
+        }
+        .cms-detail-empty svg { opacity: .5; }
+
+        .cms-detail-header {
+          display: flex; flex-direction: column; gap: 10px;
+          padding: 18px 26px 16px; border-bottom: 1px solid var(--line);
+        }
+        .cms-detail-header__top { display: flex; align-items: center; gap: 12px; }
+        .cms-back-btn { flex-shrink: 0; }
+        .cms-company-name {
+          font-family: 'Shippori Mincho', serif; font-size: 22px; font-weight: 600;
+          border: none; background: none; padding: 2px 0; flex: 1; min-width: 0; color: var(--ink);
+        }
+        .cms-company-name::placeholder { color: var(--ink-soft); opacity: .6; }
+        .cms-company-name:focus { outline: none; border-bottom: 1px solid var(--accent); }
+        .cms-detail-header__actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+        .cms-stamp {
+          width: 58px; height: 58px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+          font-family: 'Shippori Mincho', serif; font-size: 13px; font-weight: 600; letter-spacing: .06em;
+          border: 2px solid; transform: rotate(-6deg); flex-shrink: 0;
+          writing-mode: vertical-rl;
+        }
+        .cms-stamp--active { color: var(--accent); border-color: var(--accent); }
+        .cms-stamp--archived { color: var(--ink-soft); border-color: var(--ink-soft); }
+
+        .cms-endinfo {
+          margin: 16px 26px 0; padding: 14px 16px; background: var(--accent-soft); border-radius: 8px;
+          display: flex; flex-direction: column; gap: 10px;
+        }
+        .cms-endinfo__row { display: flex; flex-direction: column; gap: 5px; }
+        .cms-endinfo__label { font-size: 11.5px; font-weight: 500; color: var(--accent-ink); }
+        .cms-endinfo input, .cms-endinfo textarea {
+          font-family: inherit; font-size: 13px; padding: 7px 9px; border-radius: 6px;
+          border: 1px solid var(--line); background: var(--surface); color: var(--ink); width: 100%;
+        }
+        .cms-endinfo textarea { min-height: 50px; resize: vertical; line-height: 1.6; }
+        .cms-section { padding: 20px 26px; border-bottom: 1px solid var(--line-soft); }
+        .cms-section__title {
+          font-family: 'Shippori Mincho', serif; font-size: 14.5px; font-weight: 600; margin: 0 0 14px;
+          display: flex; align-items: center; gap: 8px; color: var(--ink);
+        }
+        .cms-section__title .cms-rule { flex:1; height:1px; background: var(--line); }
+
+        .cms-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 16px; }
+        .cms-grid--full { grid-template-columns: 1fr; }
+        .cms-field { display: flex; flex-direction: column; gap: 5px; }
+        .cms-field__label {
+          font-size: 11.5px; color: var(--ink-soft); font-weight: 500; display: flex; align-items: center; gap: 5px;
+        }
+        .cms-field input, .cms-field textarea {
+          font-family: inherit; font-size: 13.5px; padding: 8px 10px; border-radius: 6px;
+          border: 1px solid var(--line); background: var(--surface); color: var(--ink); width: 100%;
+        }
+        .cms-field input:focus, .cms-field textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
+        .cms-field textarea { resize: vertical; min-height: 76px; line-height: 1.6; }
+
+        .cms-menu-item {
+          display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: var(--surface);
+          border: 1px solid var(--line); border-radius: 8px; margin-bottom: 8px;
+        }
+        .cms-menu-item input[type=text] {
+          font-family: inherit; font-size: 13.5px; border: none; background: none; padding: 4px 2px;
+          flex: 1; min-width: 0; color: var(--ink); border-bottom: 1px dashed transparent;
+        }
+        .cms-menu-item input[type=text]:focus { outline: none; border-bottom-color: var(--accent); }
+        .cms-menu-item__price { font-size: 14px; font-weight: 500; min-width: 92px; text-align: right; }
+        .cms-tax-badge {
+          font-size: 10.5px; padding: 2px 7px; border-radius: 999px; font-weight: 500; flex-shrink: 0;
+        }
+        .cms-tax-badge--included { background: var(--green-soft); color: var(--green); }
+        .cms-tax-badge--excluded { background: var(--accent-soft); color: var(--accent-ink); }
+        .cms-icon-btn {
+          border: none; background: none; cursor: pointer; color: var(--ink-soft); padding: 4px;
+          display: flex; align-items: center; border-radius: 4px; flex-shrink: 0;
+        }
+        .cms-icon-btn:hover { background: var(--line-soft); color: var(--ink); }
+        .cms-icon-btn--danger:hover { background: var(--accent-soft); color: var(--accent-ink); }
+
+        .cms-price-editor {
+          display: flex; align-items: center; gap: 8px; background: var(--surface);
+          border: 1px solid var(--accent); border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; flex-wrap: wrap;
+        }
+        .cms-price-editor input[type=text], .cms-price-editor input[type=number] {
+          font-family: inherit; font-size: 13px; padding: 6px 8px; border-radius: 6px; border: 1px solid var(--line);
+        }
+        .cms-price-editor select {
+          font-family: inherit; font-size: 13px; padding: 6px 8px; border-radius: 6px; border: 1px solid var(--line); background: var(--surface);
+        }
+        .cms-price-editor input[data-role=price] { width: 90px; }
+        .cms-price-editor input[data-role=memo] { flex: 1; min-width: 120px; }
+
+        .cms-payment-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+        .cms-payment-row select {
+          font-family: inherit; font-size: 13.5px; padding: 8px 10px; border-radius: 6px;
+          border: 1px solid var(--line); background: var(--surface); color: var(--ink); min-width: 160px;
+        }
+        .cms-payment-row select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
+        .cms-payment-add {
+          display: flex; gap: 8px; align-items: center; margin-top: 8px; padding: 8px 10px;
+          background: var(--surface); border: 1px solid var(--accent); border-radius: 8px; flex-wrap: wrap;
+        }
+        .cms-payment-add input[type=text] {
+          flex: 1; min-width: 160px; font-family: inherit; font-size: 13px; padding: 6px 8px;
+          border-radius: 6px; border: 1px solid var(--line);
+        }
+        .cms-address-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+        .cms-address-row input { flex: 1; min-width: 180px; }
+        .cms-empty-menu { color: var(--ink-soft); font-size: 12.5px; padding: 10px 2px; }
+
+        .cms-history-add {
+          display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+          padding: 10px 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px;
+          margin-bottom: 14px;
+        }
+        .cms-history-add input[type=date] {
+          font-family: inherit; font-size: 12.5px; padding: 7px 8px; border-radius: 6px; border: 1px solid var(--line);
+          flex-shrink: 0;
+        }
+        .cms-history-add input[type=text] {
+          font-family: inherit; font-size: 13px; padding: 7px 9px; border-radius: 6px; border: 1px solid var(--line);
+          flex: 1; min-width: 160px;
+        }
+        .cms-history-item {
+          display: flex; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--line-soft); font-size: 12.5px;
+        }
+        .cms-history-item:last-child { border-bottom: none; }
+        .cms-history-date { color: var(--ink-soft); min-width: 76px; flex-shrink: 0; }
+        .cms-history-detail strong { font-weight: 600; }
+        .cms-history-detail .cms-price-change { color: var(--ink-soft); }
+        .cms-history-detail .cms-price-change b { color: var(--accent-ink); font-weight: 600; }
+        .cms-history-memo { color: var(--ink-soft); margin-top: 2px; }
+        .cms-no-history { color: var(--ink-soft); font-size: 12.5px; }
+
+        .cms-confirm-overlay {
+          position: absolute; inset: 0; background: rgba(42,39,34,.45); display: flex;
+          align-items: center; justify-content: center; z-index: 5; padding: 20px;
+        }
+        .cms-confirm-box {
+          background: var(--surface); border-radius: 10px; padding: 22px 24px; max-width: 360px; width: 100%;
+        }
+        .cms-confirm-box p { font-size: 13.5px; margin: 0 0 16px; line-height: 1.6; }
+        .cms-confirm-box__actions { display: flex; gap: 8px; justify-content: flex-end; }
+
+        .cms-search-box {
+          background: var(--surface); border-radius: 10px; width: 100%; max-width: 460px;
+          max-height: 70vh; display: flex; flex-direction: column; overflow: hidden;
+        }
+        .cms-search-box__head {
+          display: flex; align-items: center; gap: 10px; padding: 14px 16px; border-bottom: 1px solid var(--line);
+        }
+        .cms-search-box__head input {
+          flex: 1; border: none; font-family: inherit; font-size: 14px; background: none; color: var(--ink);
+        }
+        .cms-search-box__head input:focus { outline: none; }
+        .cms-search-box__results { overflow-y: auto; padding: 6px 8px; }
+        .cms-search-result {
+          display: flex; align-items: center; justify-content: space-between; gap: 10px;
+          padding: 10px 10px; border-radius: 8px; cursor: pointer;
+        }
+        .cms-search-result:hover { background: var(--bg); }
+        .cms-relative { position: relative; }
+
+        @media (max-width: 760px) {
+          .cms-list-pane { width: 100%; }
+          .cms-body { position: relative; }
+        }
+      
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<!-- ============================================================
+     ▼▼▼ ここにご自身の Firebase プロジェクトの設定を貼り付けてください ▼▼▼
+     Firebaseコンソール(https://console.firebase.google.com/)で
+     プロジェクトを作成 → 「ウェブアプリを追加」→ 表示された
+     firebaseConfig をそのまま下の { } の中に貼り替えます。
+     ============================================================ -->
+<script>
+  window.firebaseConfig = {
+  apiKey: "AIzaSyDRoqB3AoUwYLyJhYTwknI9catlNKRUuis",
+  authDomain: "kokyakukanrisisutemu.firebaseapp.com",
+  projectId: "kokyakukanrisisutemu",
+  storageBucket: "kokyakukanrisisutemu.firebasestorage.app",
+  messagingSenderId: "167283283212",
+  appId: "1:167283283212:web:729514e0f959b6e42b2529",
+  measurementId: "G-NXEDB674G4"
+  };
+</script>
+<!-- ▲▲▲ ここまで ▲▲▲ -->
+
+<script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.12.2/firebase-app-compat.js"></script>
+<script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+  firebase.initializeApp(window.firebaseConfig);
+  window.db = firebase.firestore();
+</script>
+
+<script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+<script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+<script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+
+<script type="text/babel" data-presets="react">
+
+const { useState, useEffect, useRef } = React;
+
+function Icon({ name, size = 16, style, ...rest }) {
+  const common = {
+    width: size, height: size, viewBox: '0 0 24 24', fill: 'none',
+    stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round',
+    style, ...rest,
+  };
+  switch (name) {
+    case 'plus': return <svg {...common}><path d="M12 5v14M5 12h14" /></svg>;
+    case 'x': return <svg {...common}><path d="M18 6 6 18M6 6l12 12" /></svg>;
+    case 'check': return <svg {...common}><path d="M20 6 9 17l-5-5" /></svg>;
+    case 'chevronleft': return <svg {...common}><path d="m15 18-6-6 6-6" /></svg>;
+    case 'search': return <svg {...common}><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg>;
+    case 'user': return <svg {...common}><path d="M20 21a8 8 0 0 0-16 0" /><circle cx="12" cy="7" r="4" /></svg>;
+    case 'mail': return <svg {...common}><rect x="2" y="4" width="20" height="16" rx="2" /><path d="m22 6-10 7L2 6" /></svg>;
+    case 'phone': return <svg {...common}><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .3 2 .7 3a2 2 0 0 1-.4 2.1L8 10.3a16 16 0 0 0 6 6l1.5-1.4a2 2 0 0 1 2.1-.4c1 .4 2 .6 3 .7a2 2 0 0 1 1.4 2.7Z" /></svg>;
+    case 'mappin': return <svg {...common}><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" /><circle cx="12" cy="10" r="3" /></svg>;
+    case 'building': return <svg {...common}><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z" /><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2" /><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2" /><path d="M10 6h4M10 10h4M10 14h4M10 18h4" /></svg>;
+    case 'package': return <svg {...common}><path d="M21 8a2 2 0 0 0-1-1.7l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.7l7 4a2 2 0 0 0 2 0l7-4a2 2 0 0 0 1-1.7Z" /><path d="m3.3 7 8.7 5 8.7-5M12 22V12" /></svg>;
+    case 'stickynote': return <svg {...common}><path d="M15.5 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8.5Z" /><path d="M15 3v6h6" /></svg>;
+    case 'pen': return <svg {...common}><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>;
+    case 'archive': return <svg {...common}><rect x="2" y="4" width="20" height="5" rx="1" /><path d="M4 9v9a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9M10 13h4" /></svg>;
+    case 'archiverestore': return <svg {...common}><rect x="2" y="4" width="20" height="5" rx="1" /><path d="M4 9v9a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9M9 15l3-3 3 3M12 12v6" /></svg>;
+    case 'alert': return <svg {...common}><circle cx="12" cy="12" r="10" /><path d="M12 8v4M12 16h.01" /></svg>;
+    case 'save': return <svg {...common}><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z" /><path d="M17 21v-8H7v8M7 3v5h8" /></svg>;
+    case 'external': return <svg {...common}><path d="M15 3h6v6" /><path d="M10 14 21 3" /><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /></svg>;
+    case 'history': return <svg {...common}><path d="M3 12a9 9 0 1 0 3-6.7L3 8" /><path d="M3 3v5h5" /><path d="M12 7v5l4 2" /></svg>;
+    case 'trash': return <svg {...common}><path d="M3 6h18" /><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /><path d="M10 11v6M14 11v6" /></svg>;
+    default: return null;
+  }
+}
+
+
+
+const TAX_LABEL = { included: '内税', excluded: '外税' };
+const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+const todayStr = () => new Date().toISOString().slice(0, 10);
+const yen = (n) => `¥${Number(n || 0).toLocaleString('ja-JP')}`;
+
+const emptyCustomer = () => ({
+  id: uid(),
+  companyName: '',
+  customerCode: '',
+  postalCode: '',
+  address: '',
+  tel: '',
+  fax: '',
+  email: '',
+  contactName: '',
+  contactRole: '',
+  menuItems: [],
+  mealCount: '',
+  paymentDueDay: '',
+  paymentMethod: '',
+  notes: '',
+  historyLog: [],
+  status: 'active',
+  createdAt: todayStr(),
+  archivedAt: null,
+  endReason: '',
+});
+
+const sampleCustomer = () => ({
+  ...emptyCustomer(),
+  id: uid(),
+  companyName: '山田製作所株式会社（サンプル）',
+  customerCode: 'C-0001',
+  postalCode: '750-0000',
+  address: '山口県下関市〇〇町1-2-3',
+  tel: '083-000-0000',
+  fax: '083-000-0001',
+  email: 'info@example.com',
+  contactName: '山田 太郎',
+  contactRole: '総務部',
+  menuItems: [
+    { id: uid(), name: '上', price: 650, taxType: 'included' },
+    { id: uid(), name: '特上', price: 850, taxType: 'included' },
+    { id: uid(), name: '特別メニュー', price: 1200, taxType: 'excluded' },
+  ],
+  mealCount: '約50食/日',
+  paymentDueDay: '毎月20日締め・翌月末払い',
+  paymentMethod: '銀行振込',
+  notes: '毎週月・水・金の午前11時までに数量を確定連絡。\nアレルギー対応：卵不可の方1名あり。',
+  historyLog: [
+    { id: uid(), date: '2026-04-01', itemName: '上', oldPrice: 600, newPrice: 650, memo: '原材料高騰のため改定' },
+  ],
+});
+
+const basicFields = (c) => ({
+  companyName: c.companyName,
+  customerCode: c.customerCode || '',
+  postalCode: c.postalCode,
+  address: c.address,
+  tel: c.tel,
+  fax: c.fax,
+  email: c.email,
+  contactName: c.contactName,
+  contactRole: c.contactRole,
+  mealCount: c.mealCount || '',
+  paymentDueDay: c.paymentDueDay || '',
+  paymentMethod: c.paymentMethod || '',
+  notes: c.notes,
+});
+
+function Field({ label, icon, children }) {
+  return (
+    <label className="cms-field">
+      <span className="cms-field__label">{icon ? <Icon name={icon} size={13} /> : null}{label}</span>
+      {children}
+    </label>
+  );
+}
+
+function CustomerManagementApp() {
+  const [customers, setCustomers] = useState([]);
+  const [loaded, setLoaded] = useState(false);
+  const [view, setView] = useState('active');
+  const [selectedId, setSelectedId] = useState(null);
+  const [search, setSearch] = useState('');
+  const [showDetailMobile, setShowDetailMobile] = useState(false);
+  const [editingPriceId, setEditingPriceId] = useState(null);
+  const [priceDraft, setPriceDraft] = useState({ price: '', taxType: 'included', memo: '' });
+  const [confirmAction, setConfirmAction] = useState(null); // { type: 'archive'|'restore'|'delete', id }
+  const [archiveForm, setArchiveForm] = useState({ date: '', reason: '' });
+  const [showSearchOverlay, setShowSearchOverlay] = useState(false);
+  const [globalSearch, setGlobalSearch] = useState('');
+  const [draft, setDraft] = useState(null);
+  const [newHistoryEntry, setNewHistoryEntry] = useState({ date: todayStr(), content: '' });
+  const [paymentMethods, setPaymentMethods] = useState(['銀行振込', '口座振替', '現金', '掛売（月末請求）']);
+  const [paymentMethodsLoaded, setPaymentMethodsLoaded] = useState(false);
+  const [showAddPaymentMethod, setShowAddPaymentMethod] = useState(false);
+  const [newPaymentMethod, setNewPaymentMethod] = useState('');
+  const paymentSaveTimer = useRef(null);
+  const saveTimer = useRef(null);
+
+  const skipNextCustomersSave = useRef(false);
+  const skipNextPaymentSave = useRef(false);
+  const [syncError, setSyncError] = useState(null);
+
+  // 顧客データ：Firestoreの1つのドキュメントを全員で共有し、変更をリアルタイムに反映
+  useEffect(() => {
+    const ref = window.db.collection('app').doc('customers');
+    const unsub = ref.onSnapshot(
+      (snap) => {
+        if (snap.exists) {
+          const data = snap.data();
+          skipNextCustomersSave.current = true;
+          setCustomers(Array.isArray(data.list) ? data.list : []);
+        } else {
+          const initial = [sampleCustomer()];
+          ref.set({ list: initial }).catch((e) => setSyncError(String(e)));
+        }
+        setLoaded(true);
+      },
+      (e) => setSyncError(String(e))
+    );
+    return unsub;
+  }, []);
+
+  useEffect(() => {
+    if (!loaded) return;
+    if (skipNextCustomersSave.current) {
+      skipNextCustomersSave.current = false;
+      return;
+    }
+    clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => {
+      const ref = window.db.collection('app').doc('customers');
+      ref.set({ list: customers }).catch((e) => setSyncError(String(e)));
+    }, 400);
+    return () => clearTimeout(saveTimer.current);
+  }, [customers, loaded]);
+
+  // 支払方法一覧：こちらもFirestoreの1つのドキュメントで全員共有
+  useEffect(() => {
+    const ref = window.db.collection('app').doc('paymentMethods');
+    const unsub = ref.onSnapshot(
+      (snap) => {
+        if (snap.exists) {
+          const data = snap.data();
+          if (Array.isArray(data.list) && data.list.length) {
+            skipNextPaymentSave.current = true;
+            setPaymentMethods(data.list);
+          }
+        } else {
+          ref.set({ list: paymentMethods }).catch((e) => setSyncError(String(e)));
+        }
+        setPaymentMethodsLoaded(true);
+      },
+      (e) => setSyncError(String(e))
+    );
+    return unsub;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (!paymentMethodsLoaded) return;
+    if (skipNextPaymentSave.current) {
+      skipNextPaymentSave.current = false;
+      return;
+    }
+    clearTimeout(paymentSaveTimer.current);
+    paymentSaveTimer.current = setTimeout(() => {
+      const ref = window.db.collection('app').doc('paymentMethods');
+      ref.set({ list: paymentMethods }).catch((e) => setSyncError(String(e)));
+    }, 400);
+    return () => clearTimeout(paymentSaveTimer.current);
+  }, [paymentMethods, paymentMethodsLoaded]);
+
+  const selected = customers.find((c) => c.id === selectedId) || null;
+
+  useEffect(() => {
+    const c = customers.find((c) => c.id === selectedId);
+    setDraft(c ? basicFields(c) : null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedId]);
+
+  const dv = draft || (selected ? basicFields(selected) : {});
+  const setDraftField = (field, value) => setDraft({ ...dv, [field]: value });
+  const isDirty = !!(selected && JSON.stringify(dv) !== JSON.stringify(basicFields(selected)));
+  const saveBasicInfo = () => {
+    if (!selected) return;
+    updateCustomer(selected.id, { ...dv });
+    setDraft(null);
+  };
+  const openInGoogleMaps = () => {
+    const q = (dv.address || '').trim();
+    if (!q) return;
+    window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`, '_blank');
+  };
+
+  const addPaymentMethod = () => {
+    const m = newPaymentMethod.trim();
+    if (!m) return;
+    setPaymentMethods((prev) => (prev.includes(m) ? prev : [...prev, m]));
+    setDraftField('paymentMethod', m);
+    setNewPaymentMethod('');
+    setShowAddPaymentMethod(false);
+  };
+
+  const updateCustomer = (id, patch) => {
+    setCustomers((prev) =>
+      prev.map((c) => (c.id === id ? { ...c, ...(typeof patch === 'function' ? patch(c) : patch) } : c))
+    );
+  };
+
+  const list = customers
+    .filter((c) => c.status === view)
+    .filter((c) => {
+      if (!search.trim()) return true;
+      const q = search.trim();
+      return (c.companyName || '').includes(q) || (c.contactName || '').includes(q);
+    })
+    .sort((a, b) => (a.companyName || '').localeCompare(b.companyName || '', 'ja'));
+
+  const activeCount = customers.filter((c) => c.status === 'active').length;
+  const archivedCount = customers.filter((c) => c.status === 'archived').length;
+
+  const globalResults = globalSearch.trim()
+    ? customers
+        .filter((c) => (c.companyName || '').includes(globalSearch.trim()))
+        .sort((a, b) => (a.companyName || '').localeCompare(b.companyName || '', 'ja'))
+    : [];
+
+  const openFromSearch = (c) => {
+    setView(c.status);
+    setSelectedId(c.id);
+    setShowDetailMobile(true);
+    setShowSearchOverlay(false);
+    setGlobalSearch('');
+  };
+
+  const backToList = () => {
+    setSelectedId(null);
+    setShowDetailMobile(false);
+  };
+
+  const handleAddNew = () => {
+    const nc = emptyCustomer();
+    setCustomers((prev) => [nc, ...prev]);
+    setSelectedId(nc.id);
+    setView('active');
+    setShowDetailMobile(true);
+  };
+
+  const handleSelect = (id) => {
+    setSelectedId(id);
+    setShowDetailMobile(true);
+    setEditingPriceId(null);
+  };
+
+  const addMenuItem = (customerId) => {
+    updateCustomer(customerId, (c) => ({
+      menuItems: [...c.menuItems, { id: uid(), name: '', price: 0, taxType: 'included' }],
+    }));
+  };
+
+  const removeMenuItem = (customerId, itemId) => {
+    updateCustomer(customerId, (c) => ({
+      menuItems: c.menuItems.filter((mi) => mi.id !== itemId),
+    }));
+  };
+
+  const renameMenuItem = (customerId, itemId, name) => {
+    updateCustomer(customerId, (c) => ({
+      menuItems: c.menuItems.map((mi) => (mi.id === itemId ? { ...mi, name } : mi)),
+    }));
+  };
+
+  const addManualHistoryEntry = (customerId) => {
+    const content = newHistoryEntry.content.trim();
+    if (!content) return;
+    updateCustomer(customerId, (c) => ({
+      historyLog: [
+        { id: uid(), date: newHistoryEntry.date || todayStr(), content },
+        ...c.historyLog,
+      ],
+    }));
+    setNewHistoryEntry({ date: todayStr(), content: '' });
+  };
+
+  const startPriceEdit = (item) => {
+    setEditingPriceId(item.id);
+    setPriceDraft({ price: String(item.price ?? 0), taxType: item.taxType || 'included', memo: '' });
+  };
+
+  const confirmPriceEdit = (customerId, item) => {
+    const newPrice = Number(priceDraft.price) || 0;
+    updateCustomer(customerId, (c) => {
+      const menuItems = c.menuItems.map((mi) =>
+        mi.id === item.id ? { ...mi, price: newPrice, taxType: priceDraft.taxType } : mi
+      );
+      let historyLog = c.historyLog;
+      if (newPrice !== item.price) {
+        historyLog = [
+          {
+            id: uid(),
+            date: todayStr(),
+            itemName: item.name || '(名称未設定)',
+            oldPrice: item.price,
+            newPrice,
+            memo: priceDraft.memo,
+          },
+          ...c.historyLog,
+        ];
+      }
+      return { menuItems, historyLog };
+    });
+    setEditingPriceId(null);
+  };
+
+  const runConfirmedAction = () => {
+    if (!confirmAction) return;
+    const { type, id } = confirmAction;
+    if (type === 'archive') {
+      updateCustomer(id, {
+        status: 'archived',
+        archivedAt: archiveForm.date || todayStr(),
+        endReason: archiveForm.reason,
+      });
+      setShowDetailMobile(false);
+    } else if (type === 'restore') {
+      updateCustomer(id, { status: 'active', archivedAt: null, endReason: '' });
+    } else if (type === 'delete') {
+      setCustomers((prev) => prev.filter((c) => c.id !== id));
+      setSelectedId(null);
+      setShowDetailMobile(false);
+    }
+    setConfirmAction(null);
+  };
+
+  return (
+    <div className="cms-app">
+      {syncError && (
+        <div className="cms-sync-error">
+          データベースに接続できません。firebaseConfig の設定をご確認ください。({syncError})
+        </div>
+      )}
+
+      <div className="cms-topbar">
+        <div className="cms-topbar__title">
+          <h1 className="cms-display">株式会社料理かしば</h1>
+          <p>顧客取引データベース</p>
+        </div>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <button className="cms-btn cms-btn--ghost-dark" onClick={() => setShowSearchOverlay(true)}>
+            <Icon name="search" size={15} /> 会社名で検索
+          </button>
+          <button className="cms-btn cms-btn--accent" onClick={handleAddNew}>
+            <Icon name="plus" size={15} /> 新規取引先を登録
+          </button>
+        </div>
+      </div>
+
+      <div className="cms-body cms-relative">
+        <div
+          className="cms-list-pane"
+          style={{ display: showDetailMobile ? 'none' : 'flex' }}
+        >
+          <div className="cms-tabs">
+            <button
+              className={`cms-tab ${view === 'active' ? 'cms-tab--active' : ''}`}
+              onClick={() => setView('active')}
+            >
+              取引先一覧 <span className="cms-tab__count">({activeCount})</span>
+            </button>
+            <button
+              className={`cms-tab ${view === 'archived' ? 'cms-tab--active' : ''}`}
+              onClick={() => setView('archived')}
+            >
+              取引終了BOX <span className="cms-tab__count">({archivedCount})</span>
+            </button>
+          </div>
+
+          <div className="cms-search">
+            <Icon name="search" size={14} />
+            <input
+              type="text"
+              placeholder="会社名・担当者名で検索"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+
+          <div className="cms-list">
+            {list.length === 0 && (
+              <div className="cms-list-empty">
+                {view === 'active' ? '取引先が登録されていません。' : '取引終了した取引先はありません。'}
+              </div>
+            )}
+            {list.map((c) => (
+              <div
+                key={c.id}
+                className={`cms-list-item ${c.id === selectedId ? 'cms-list-item--selected' : ''}`}
+                onClick={() => handleSelect(c.id)}
+              >
+                <p className="cms-list-item__name">{c.companyName || '（会社名未入力）'}</p>
+                <p className="cms-list-item__sub">
+                  <Icon name="user" size={11} /> {c.contactName || '担当者未設定'}
+                  <span>・</span>
+                  <Icon name="package" size={11} /> {c.menuItems.length}品目
+                  {c.status === 'archived' && c.archivedAt && (
+                    <>
+                      <span>・</span>
+                      終了 {c.archivedAt}
+                    </>
+                  )}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div
+          className="cms-detail-pane"
+          style={{ display: showDetailMobile ? 'block' : undefined }}
+        >
+          {!selected && (
+            <div className="cms-detail-empty">
+              <Icon name="building" size={40} />
+              <p>左の一覧から取引先を選択するか、<br />「新規取引先を登録」から追加してください。</p>
+            </div>
+          )}
+
+          {selected && (
+            <>
+              <div className="cms-detail-header">
+                <div className="cms-detail-header__top">
+                  <button
+                    className="cms-btn cms-btn--ghost cms-btn--sm cms-back-btn"
+                    onClick={backToList}
+                  >
+                    <Icon name="chevronleft" size={14} /> 取引先一覧へ戻る
+                  </button>
+                  <input
+                    className="cms-company-name"
+                    placeholder="会社名を入力"
+                    value={dv.companyName || ''}
+                    onChange={(e) => setDraftField('companyName', e.target.value)}
+                  />
+                </div>
+                <div className="cms-detail-header__actions">
+                  <button
+                    className="cms-btn cms-btn--accent cms-btn--sm"
+                    onClick={saveBasicInfo}
+                    disabled={!isDirty}
+                  >
+                    <Icon name="save" size={13} /> 修正を保存
+                  </button>
+                  {selected.status === 'active' ? (
+                    <button
+                      className="cms-btn cms-btn--ghost cms-btn--sm"
+                      onClick={() => {
+                        setArchiveForm({ date: todayStr(), reason: '' });
+                        setConfirmAction({ type: 'archive', id: selected.id });
+                      }}
+                    >
+                      <Icon name="archive" size={13} /> 取引終了にする
+                    </button>
+                  ) : (
+                    <button
+                      className="cms-btn cms-btn--ghost cms-btn--sm"
+                      onClick={() => setConfirmAction({ type: 'restore', id: selected.id })}
+                    >
+                      <Icon name="archiverestore" size={13} /> 取引再開する
+                    </button>
+                  )}
+                  <button
+                    className="cms-btn cms-btn--danger cms-btn--sm"
+                    onClick={() => setConfirmAction({ type: 'delete', id: selected.id })}
+                  >
+                    <Icon name="trash" size={13} />
+                  </button>
+                </div>
+              </div>
+
+              {selected.status === 'archived' && (
+                <div className="cms-endinfo">
+                  <div className="cms-endinfo__row">
+                    <span className="cms-endinfo__label">終了日</span>
+                    <input
+                      type="date"
+                      value={selected.archivedAt || ''}
+                      onChange={(e) => updateCustomer(selected.id, { archivedAt: e.target.value })}
+                    />
+                  </div>
+                  <div className="cms-endinfo__row">
+                    <span className="cms-endinfo__label">終了理由</span>
+                    <textarea
+                      placeholder="終了理由を入力"
+                      value={selected.endReason}
+                      onChange={(e) => updateCustomer(selected.id, { endReason: e.target.value })}
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div className="cms-section">
+                <h3 className="cms-section__title"><Icon name="building" size={15} /> 基本情報 <span className="cms-rule" /></h3>
+                <div className="cms-grid">
+                  <Field label="取引先コード">
+                    <input
+                      type="text"
+                      placeholder="C-0001"
+                      value={dv.customerCode || ''}
+                      onChange={(e) => setDraftField('customerCode', e.target.value)}
+                    />
+                  </Field>
+                  <Field label="郵便番号" icon="mappin">
+                    <input
+                      type="text"
+                      placeholder="750-0000"
+                      value={dv.postalCode || ''}
+                      onChange={(e) => setDraftField('postalCode', e.target.value)}
+                    />
+                  </Field>
+                  <Field label="電話番号" icon="phone">
+                    <input
+                      type="text"
+                      placeholder="083-000-0000"
+                      value={dv.tel || ''}
+                      onChange={(e) => setDraftField('tel', e.target.value)}
+                    />
+                  </Field>
+                  <div className="cms-grid--full" style={{ gridColumn: '1 / -1' }}>
+                    <Field label="住所" icon="mappin">
+                      <div className="cms-address-row">
+                        <input
+                          type="text"
+                          placeholder="山口県下関市〇〇町1-2-3"
+                          value={dv.address || ''}
+                          onChange={(e) => setDraftField('address', e.target.value)}
+                        />
+                        <button
+                          type="button"
+                          className="cms-btn cms-btn--ghost cms-btn--sm"
+                          onClick={openInGoogleMaps}
+                          disabled={!(dv.address || '').trim()}
+                        >
+                          <Icon name="external" size={13} /> Googleマップで開く
+                        </button>
+                      </div>
+                    </Field>
+                  </div>
+                  <Field label="FAX">
+                    <input
+                      type="text"
+                      value={dv.fax || ''}
+                      onChange={(e) => setDraftField('fax', e.target.value)}
+                    />
+                  </Field>
+                  <Field label="メールアドレス" icon="mail">
+                    <input
+                      type="text"
+                      value={dv.email || ''}
+                      onChange={(e) => setDraftField('email', e.target.value)}
+                    />
+                  </Field>
+                  <Field label="担当者名" icon="user">
+                    <input
+                      type="text"
+                      value={dv.contactName || ''}
+                      onChange={(e) => setDraftField('contactName', e.target.value)}
+                    />
+                  </Field>
+                  <Field label="部署・役職">
+                    <input
+                      type="text"
+                      value={dv.contactRole || ''}
+                      onChange={(e) => setDraftField('contactRole', e.target.value)}
+                    />
+                  </Field>
+                  <Field label="おおよその食数">
+                    <input
+                      type="text"
+                      placeholder="例：約50食/日"
+                      value={dv.mealCount || ''}
+                      onChange={(e) => setDraftField('mealCount', e.target.value)}
+                    />
+                  </Field>
+                  <Field label="支払の締め日">
+                    <input
+                      type="text"
+                      placeholder="例：毎月20日締め・翌月末払い"
+                      value={dv.paymentDueDay || ''}
+                      onChange={(e) => setDraftField('paymentDueDay', e.target.value)}
+                    />
+                  </Field>
+                  <div className="cms-grid--full" style={{ gridColumn: '1 / -1' }}>
+                    <Field label="支払方法">
+                      <div className="cms-payment-row">
+                        <select
+                          value={dv.paymentMethod || ''}
+                          onChange={(e) => setDraftField('paymentMethod', e.target.value)}
+                        >
+                          <option value="">未選択</option>
+                          {paymentMethods.map((m) => (
+                            <option key={m} value={m}>{m}</option>
+                          ))}
+                        </select>
+                        <button
+                          type="button"
+                          className="cms-btn cms-btn--ghost cms-btn--sm"
+                          onClick={() => setShowAddPaymentMethod((v) => !v)}
+                        >
+                          <Icon name="plus" size={13} /> 支払方法を追加
+                        </button>
+                      </div>
+                      {showAddPaymentMethod && (
+                        <div className="cms-payment-add">
+                          <input
+                            type="text"
+                            placeholder="新しい支払方法を入力（例：クレジットカード）"
+                            value={newPaymentMethod}
+                            onChange={(e) => setNewPaymentMethod(e.target.value)}
+                            onKeyDown={(e) => e.key === 'Enter' && addPaymentMethod()}
+                            autoFocus
+                          />
+                          <button className="cms-icon-btn" onClick={addPaymentMethod} aria-label="追加を確定">
+                            <Icon name="check" size={16} />
+                          </button>
+                          <button
+                            className="cms-icon-btn"
+                            onClick={() => { setShowAddPaymentMethod(false); setNewPaymentMethod(''); }}
+                            aria-label="キャンセル"
+                          >
+                            <Icon name="x" size={16} />
+                          </button>
+                        </div>
+                      )}
+                    </Field>
+                  </div>
+                </div>
+              </div>
+
+              <div className="cms-section">
+                <h3 className="cms-section__title"><Icon name="package" size={15} /> 注文メニュー <span className="cms-rule" /></h3>
+
+                {selected.menuItems.length === 0 && (
+                  <p className="cms-empty-menu">メニューが登録されていません。「＋ メニューを追加」から登録してください。</p>
+                )}
+
+                {selected.menuItems.map((item) =>
+                  editingPriceId === item.id ? (
+                    <div className="cms-price-editor" key={item.id}>
+                      <span style={{ fontSize: 13, fontWeight: 500 }}>{item.name || '（名称未設定）'}</span>
+                      <input
+                        type="number"
+                        data-role="price"
+                        value={priceDraft.price}
+                        onChange={(e) => setPriceDraft((d) => ({ ...d, price: e.target.value }))}
+                      />
+                      <select
+                        value={priceDraft.taxType}
+                        onChange={(e) => setPriceDraft((d) => ({ ...d, taxType: e.target.value }))}
+                      >
+                        <option value="included">内税</option>
+                        <option value="excluded">外税</option>
+                      </select>
+                      <input
+                        type="text"
+                        data-role="memo"
+                        placeholder="変更メモ（任意・例：原材料高騰のため）"
+                        value={priceDraft.memo}
+                        onChange={(e) => setPriceDraft((d) => ({ ...d, memo: e.target.value }))}
+                      />
+                      <button className="cms-icon-btn" onClick={() => confirmPriceEdit(selected.id, item)} aria-label="保存">
+                        <Icon name="check" size={16} />
+                      </button>
+                      <button className="cms-icon-btn" onClick={() => setEditingPriceId(null)} aria-label="キャンセル">
+                        <Icon name="x" size={16} />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="cms-menu-item" key={item.id}>
+                      <input
+                        type="text"
+                        placeholder="メニュー名（例：上、特上、特別メニュー）"
+                        value={item.name}
+                        onChange={(e) => renameMenuItem(selected.id, item.id, e.target.value)}
+                      />
+                      <span className={`cms-tax-badge cms-tax-badge--${item.taxType}`}>{TAX_LABEL[item.taxType]}</span>
+                      <span className="cms-menu-item__price">{yen(item.price)}</span>
+                      <button className="cms-icon-btn" onClick={() => startPriceEdit(item)} aria-label="価格を編集">
+                        <Icon name="pen" size={15} />
+                      </button>
+                      <button
+                        className="cms-icon-btn cms-icon-btn--danger"
+                        onClick={() => removeMenuItem(selected.id, item.id)}
+                        aria-label="メニューを削除"
+                      >
+                        <Icon name="trash" size={15} />
+                      </button>
+                    </div>
+                  )
+                )}
+
+                <button className="cms-btn cms-btn--ghost cms-btn--sm" onClick={() => addMenuItem(selected.id)}>
+                  <Icon name="plus" size={13} /> メニューを追加
+                </button>
+              </div>
+
+              <div className="cms-section">
+                <h3 className="cms-section__title"><Icon name="stickynote" size={15} /> 備考・注意事項 <span className="cms-rule" /></h3>
+                <Field label="">
+                  <textarea
+                    placeholder="配送に関する注意事項、アレルギー対応、締切時間など"
+                    value={dv.notes || ''}
+                    onChange={(e) => setDraftField('notes', e.target.value)}
+                  />
+                </Field>
+              </div>
+
+              <div className="cms-section" style={{ borderBottom: 'none' }}>
+                <h3 className="cms-section__title"><Icon name="history" size={15} /> 取引先変更履歴 <span className="cms-rule" /></h3>
+
+                <div className="cms-history-add">
+                  <input
+                    type="date"
+                    value={newHistoryEntry.date}
+                    onChange={(e) => setNewHistoryEntry((f) => ({ ...f, date: e.target.value }))}
+                  />
+                  <input
+                    type="text"
+                    placeholder="変更内容を記入（例：担当者が佐藤様に変更、配送時間を9時に変更）"
+                    value={newHistoryEntry.content}
+                    onChange={(e) => setNewHistoryEntry((f) => ({ ...f, content: e.target.value }))}
+                  />
+                  <button
+                    className="cms-btn cms-btn--ghost cms-btn--sm"
+                    onClick={() => addManualHistoryEntry(selected.id)}
+                    disabled={!newHistoryEntry.content.trim()}
+                  >
+                    <Icon name="plus" size={13} /> 追加
+                  </button>
+                </div>
+
+                {selected.historyLog.length === 0 ? (
+                  <p className="cms-no-history">変更履歴の記録はまだありません。価格を編集すると自動で記録されるほか、上の欄から自由に記入できます。</p>
+                ) : (
+                  selected.historyLog.map((h) => (
+                    <div className="cms-history-item" key={h.id}>
+                      <span className="cms-history-date">{h.date}</span>
+                      <div className="cms-history-detail">
+                        {h.itemName ? (
+                          <>
+                            <div>
+                              <strong>{h.itemName}</strong>{' '}
+                              <span className="cms-price-change">
+                                {yen(h.oldPrice)} → <b>{yen(h.newPrice)}</b>
+                              </span>
+                            </div>
+                            {h.memo && <div className="cms-history-memo">{h.memo}</div>}
+                          </>
+                        ) : (
+                          <div>{h.content}</div>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </>
+          )}
+        </div>
+
+        {showSearchOverlay && (
+          <div className="cms-confirm-overlay" onClick={() => setShowSearchOverlay(false)}>
+            <div className="cms-search-box" onClick={(e) => e.stopPropagation()}>
+              <div className="cms-search-box__head">
+                <Icon name="search" size={15} />
+                <input
+                  type="text"
+                  autoFocus
+                  placeholder="会社名を入力して検索（取引終了BOXも対象）"
+                  value={globalSearch}
+                  onChange={(e) => setGlobalSearch(e.target.value)}
+                />
+                <button className="cms-icon-btn" onClick={() => setShowSearchOverlay(false)} aria-label="閉じる">
+                  <Icon name="x" size={18} />
+                </button>
+              </div>
+              <div className="cms-search-box__results">
+                {!globalSearch.trim() && (
+                  <p className="cms-no-history">会社名を入力すると、取引先一覧・取引終了BOXの両方から検索します。</p>
+                )}
+                {globalSearch.trim() && globalResults.length === 0 && (
+                  <p className="cms-no-history">該当する会社が見つかりませんでした。</p>
+                )}
+                {globalResults.map((c) => (
+                  <div key={c.id} className="cms-search-result" onClick={() => openFromSearch(c)}>
+                    <div>
+                      <p className="cms-list-item__name">{c.companyName || '（会社名未入力）'}</p>
+                      <p className="cms-list-item__sub">{c.address || '住所未入力'}</p>
+                    </div>
+                    <span className={`cms-tax-badge ${c.status === 'active' ? 'cms-tax-badge--included' : 'cms-tax-badge--excluded'}`}>
+                      {c.status === 'active' ? '取引中' : '終了'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {confirmAction && (
+          <div className="cms-confirm-overlay">
+            <div className="cms-confirm-box">
+              {confirmAction.type === 'archive' && (
+                <>
+                  <p style={{ marginBottom: 12 }}>この取引先を「取引終了BOX」に移動します。終了日と終了理由を入力してください。</p>
+                  <div className="cms-field" style={{ marginBottom: 10 }}>
+                    <span className="cms-field__label">終了日</span>
+                    <input
+                      type="date"
+                      value={archiveForm.date}
+                      onChange={(e) => setArchiveForm((f) => ({ ...f, date: e.target.value }))}
+                    />
+                  </div>
+                  <div className="cms-field" style={{ marginBottom: 16 }}>
+                    <span className="cms-field__label">終了理由（任意）</span>
+                    <textarea
+                      placeholder="例：先方廃業のため、価格折り合わず、取扱店舗変更のため"
+                      value={archiveForm.reason}
+                      onChange={(e) => setArchiveForm((f) => ({ ...f, reason: e.target.value }))}
+                      style={{ minHeight: 60 }}
+                    />
+                  </div>
+                </>
+              )}
+              {confirmAction.type === 'restore' && (
+                <p>この取引先を取引先一覧に戻します。よろしいですか？</p>
+              )}
+              {confirmAction.type === 'delete' && (
+                <p>
+                  <Icon name="alert" size={14} style={{ verticalAlign: '-2px', marginRight: 4, color: 'var(--accent-ink)' }} />
+                  このデータを完全に削除します。この操作は取り消せません。よろしいですか？
+                </p>
+              )}
+              <div className="cms-confirm-box__actions">
+                <button className="cms-btn cms-btn--ghost cms-btn--sm" onClick={() => setConfirmAction(null)}>
+                  キャンセル
+                </button>
+                <button
+                  className={`cms-btn cms-btn--sm ${confirmAction.type === 'delete' ? 'cms-btn--danger' : 'cms-btn--accent'}`}
+                  onClick={runConfirmedAction}
+                >
+                  {confirmAction.type === 'archive' && '取引終了にする'}
+                  {confirmAction.type === 'restore' && '取引を再開する'}
+                  {confirmAction.type === 'delete' && '削除する'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(<CustomerManagementApp />);
+
+</script>
+</body>
+</html>
