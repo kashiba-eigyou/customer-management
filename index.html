@@ -289,13 +289,15 @@
      firebaseConfig をそのまま下の { } の中に貼り替えます。
      ============================================================ -->
 <script>
+  // Firebase コンソールから取得したWebアプリ設定
   window.firebaseConfig = {
-    apiKey: "ここにapiKeyを貼り付け",
-    authDomain: "ここにauthDomainを貼り付け",
-    projectId: "ここにprojectIdを貼り付け",
-    storageBucket: "ここにstorageBucketを貼り付け",
-    messagingSenderId: "ここにmessagingSenderIdを貼り付け",
-    appId: "ここにappIdを貼り付け"
+    apiKey: "AIzaSyDr6ThMXd1HoMbbO7C0nQXOpdOjW476NE0",
+    authDomain: "customer-management-app-a2d1b.firebaseapp.com",
+    projectId: "customer-management-app-a2d1b",
+    storageBucket: "customer-management-app-a2d1b.firebasestorage.app",
+    messagingSenderId: "165651304050",
+    appId: "1:165651304050:web:620d60d6a32c72c921fceb",
+    measurementId: "G-759XR423FF"
   };
 </script>
 <!-- ▲▲▲ ここまで ▲▲▲ -->
@@ -1218,34 +1220,6 @@ function CustomerManagementApp() {
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(<CustomerManagementApp />);
 
-</script>
-<script type="module">
-  // Import the functions you need from the SDKs you need
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-app.js";
-  import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-analytics.js";
-  
-  // ↓【追加】Firestoreとデータ追加用関数を読み込みます
-  import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-firestore.js";
-
-  // Your web app's Firebase configuration
-  const firebaseConfig = {
-    apiKey: "AIzaSyDr6ThMXd1HoMbbO7C0nQXOpdOjW476NE0",
-    authDomain: "customer-management-app-a2d1b.firebaseapp.com",
-    projectId: "customer-management-app-a2d1b",
-    storageBucket: "customer-management-app-a2d1b.firebasestorage.app",
-    messagingSenderId: "165651304050",
-    appId: "1:165651304050:web:620d60d6a32c72c921fceb",
-    measurementId: "G-759XR423FF"
-  };
-
-  // Initialize Firebase
-  const app = initializeApp(firebaseConfig);
-  const analytics = getAnalytics(app);
-
-  // ↓【追加】データベースを初期化し、React側から呼び出せるように公開します
-  const db = getFirestore(app);
-  window.db = db;
-  window.firebaseFirestore = { collection, addDoc, getDocs, deleteDoc, doc };
 </script>
 </body>
 </html>
