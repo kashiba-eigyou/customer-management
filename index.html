@@ -1219,5 +1219,28 @@ const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(<CustomerManagementApp />);
 
 </script>
+<script type="module">
+  // Import the functions you need from the SDKs you need
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-app.js";
+  import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-analytics.js";
+  // TODO: Add SDKs for Firebase products that you want to use
+  // https://firebase.google.com/docs/web/setup#available-libraries
+
+  // Your web app's Firebase configuration
+  // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+  const firebaseConfig = {
+    apiKey: "AIzaSyDr6ThMXd1HoMbbO7C0nQXOpdOjW476NE0",
+    authDomain: "customer-management-app-a2d1b.firebaseapp.com",
+    projectId: "customer-management-app-a2d1b",
+    storageBucket: "customer-management-app-a2d1b.firebasestorage.app",
+    messagingSenderId: "165651304050",
+    appId: "1:165651304050:web:620d60d6a32c72c921fceb",
+    measurementId: "G-759XR423FF"
+  };
+
+  // Initialize Firebase
+  const app = initializeApp(firebaseConfig);
+  const analytics = getAnalytics(app);
+</script>
 </body>
 </html>
