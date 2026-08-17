@@ -265,6 +265,24 @@
         }
         .cms-search-box__head input:focus { outline: none; }
         .cms-search-box__results { overflow-y: auto; padding: 6px 8px; }
+        .cms-list-tools { padding: 10px 12px; border-bottom: 1px solid var(--line-soft); display: flex; flex-direction: column; gap: 7px; }
+        .cms-list-tools select { width: 100%; font-family: inherit; font-size: 12.5px; padding: 7px 8px; border-radius: 6px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); }
+        .cms-list-tools__actions { display: flex; gap: 6px; }
+        .cms-list-tools__actions .cms-btn { flex: 1; justify-content: center; }
+        .cms-print-only { display: none; }
+        @media print {
+          @page { size: A4; margin: 14mm; }
+          body { background: #fff !important; }
+          .cms-app { display: none !important; }
+          .cms-print-only { display: block !important; color: #111; font-family: 'Zen Kaku Gothic New', sans-serif; }
+          .cms-print-only h1 { font-family: 'Shippori Mincho', serif; font-size: 22px; margin: 0 0 5mm; }
+          .cms-print-only .print-meta { color: #555; font-size: 11px; margin-bottom: 5mm; }
+          .cms-print-only table { width: 100%; border-collapse: collapse; font-size: 11px; }
+          .cms-print-only th, .cms-print-only td { border: 1px solid #999; padding: 6px 7px; text-align: left; vertical-align: top; }
+          .cms-print-only th { background: #eee; width: 24%; font-weight: 700; }
+          .cms-print-only .print-list th, .cms-print-only .print-list td { padding: 5px 6px; }
+          .cms-print-only .print-notes { white-space: pre-wrap; min-height: 18mm; }
+        }
         .cms-search-result {
           display: flex; align-items: center; justify-content: space-between; gap: 10px;
           padding: 10px 10px; border-radius: 8px; cursor: pointer;
@@ -376,6 +394,7 @@ const emptyCustomer = () => ({
   createdAt: todayStr(),
   archivedAt: null,
   endReason: '',
+  deliveryCourse: '',
 });
 
 const sampleCustomer = () => ({
@@ -417,6 +436,7 @@ const basicFields = (c) => ({
   mealCount: c.mealCount || '',
   paymentDueDay: c.paymentDueDay || '',
   paymentMethod: c.paymentMethod || '',
+  deliveryCourse: c.deliveryCourse || '',
   notes: c.notes,
 });
 
@@ -445,6 +465,11 @@ function CustomerManagementApp() {
   const [draft, setDraft] = useState(null);
   const [newHistoryEntry, setNewHistoryEntry] = useState({ date: todayStr(), content: '' });
   const [paymentMethods, setPaymentMethods] = useState(['銀行振込', '口座振替', '現金', '掛売（月末請求）']);
+  const [deliveryCourses, setDeliveryCourses] = useState(['Aコース', 'Bコース']);
+  const [deliveryCoursesLoaded, setDeliveryCoursesLoaded] = useState(false);
+  const [showAddDeliveryCourse, setShowAddDeliveryCourse] = useState(false);
+  const [newDeliveryCourse, setNewDeliveryCourse] = useState('');
+  const [courseFilter, setCourseFilter] = useState('');
   const [paymentMethodsLoaded, setPaymentMethodsLoaded] = useState(false);
   const [showAddPaymentMethod, setShowAddPaymentMethod] = useState(false);
   const [newPaymentMethod, setNewPaymentMethod] = useState('');
@@ -453,6 +478,8 @@ function CustomerManagementApp() {
 
   const skipNextCustomersSave = useRef(false);
   const skipNextPaymentSave = useRef(false);
+  const skipNextDeliveryCoursesSave = useRef(false);
+  const deliveryCourseSaveTimer = useRef(null);
   const [syncError, setSyncError] = useState(null);
 
   // 顧客データ：Firestoreの1つのドキュメントを全員で共有し、変更をリアルタイムに反映
@@ -511,6 +538,69 @@ function CustomerManagementApp() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // 配送コース一覧：Firestoreの1つのドキュメントで全員共有
+  useEffect(() => {
+    const ref = window.db.collection('app').doc('deliveryCourses');
+    const unsub = ref.onSnapshot(
+      (snap) => {
+        if (snap.exists) {
+          const data = snap.data();
+          if (Array.isArray(data.list) && data.list.length) {
+            skipNextDeliveryCoursesSave.current = true;
+            setDeliveryCourses(data.list);
+          }
+        } else {
+          ref.set({ list: deliveryCourses }).catch((e) => setSyncError(String(e)));
+        }
+        setDeliveryCoursesLoaded(true);
+      },
+      (e) => setSyncError(String(e))
+    );
+    return unsub;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (!deliveryCoursesLoaded) return;
+    if (skipNextDeliveryCoursesSave.current) {
+      skipNextDeliveryCoursesSave.current = false;
+      return;
+    }
+    clearTimeout(deliveryCourseSaveTimer.current);
+    deliveryCourseSaveTimer.current = setTimeout(() => {
+      window.db.collection('app').doc('deliveryCourses').set({ list: deliveryCourses })
+        .catch((e) => setSyncError(String(e)));
+    }, 400);
+    return () => clearTimeout(deliveryCourseSaveTimer.current);
+  }, [deliveryCourses, deliveryCoursesLoaded]);
+
+  const addDeliveryCourse = () => {
+    const name = newDeliveryCourse.trim();
+    if (!name) return;
+    setDeliveryCourses((prev) => prev.includes(name) ? prev : [...prev, name]);
+    setDraftField('deliveryCourse', name);
+    setNewDeliveryCourse('');
+    setShowAddDeliveryCourse(false);
+  };
+
+  const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+  const openPrintWindow = (title, body) => {
+    const w = window.open('', '_blank');
+    if (!w) return;
+    w.document.write(`<!doctype html><html lang="ja"><head><meta charset="UTF-8"><title>${escapeHtml(title)}</title><style>@page{size:A4;margin:14mm}*{box-sizing:border-box}body{font-family:Arial,'Noto Sans JP',sans-serif;color:#111;margin:0}h1{font-size:22px;margin:0 0 5mm}h2{font-size:15px;margin:6mm 0 2mm;border-bottom:1px solid #333;padding-bottom:2mm}.meta{font-size:11px;color:#555;margin-bottom:5mm}table{width:100%;border-collapse:collapse;font-size:11px}th,td{border:1px solid #999;padding:6px 7px;text-align:left;vertical-align:top}th{background:#eee;width:24%}.notes{white-space:pre-wrap;min-height:18mm}.print-list th,.print-list td{padding:5px 6px}@media print{button{display:none}}</style></head><body>${body}</body></html>`);
+    w.document.close();
+    w.focus();
+    setTimeout(() => w.print(), 250);
+  };
+  const printCourseList = () => {
+    const label = courseFilter || '全コース';
+    const rows = list.map((c, i) => `<tr><td>${i + 1}</td><td>${escapeHtml(c.companyName || '（会社名未入力）')}</td><td>${escapeHtml(c.deliveryCourse || '未設定')}</td><td>${escapeHtml(c.postalCode)}</td><td>${escapeHtml(c.address)}</td><td>${escapeHtml(c.tel)}</td><td>${escapeHtml(c.contactName)}</td></tr>`).join('');
+    openPrintWindow(`配送コース別顧客一覧｜${label}`, `<h1>配送コース別 顧客一覧</h1><div class="meta">対象コース：${escapeHtml(label)}　／　${new Date().toLocaleDateString('ja-JP')}</div><table class="print-list"><thead><tr><th>No.</th><th>会社名</th><th>配送コース</th><th>郵便番号</th><th>住所</th><th>電話番号</th><th>担当者</th></tr></thead><tbody>${rows || '<tr><td colspan="7">該当する顧客はありません。</td></tr>'}</tbody></table>`);
+  };
+  const printCustomer = (c) => {
+    openPrintWindow(`顧客基本データ｜${c.companyName || '未入力'}`, `<h1>顧客基本データ</h1><div class="meta">印刷日：${new Date().toLocaleDateString('ja-JP')}</div><table><tbody><tr><th>会社名</th><td>${escapeHtml(c.companyName)}</td></tr><tr><th>取引先コード</th><td>${escapeHtml(c.customerCode)}</td></tr><tr><th>配送コース</th><td>${escapeHtml(c.deliveryCourse || '未設定')}</td></tr><tr><th>郵便番号</th><td>${escapeHtml(c.postalCode)}</td></tr><tr><th>住所</th><td>${escapeHtml(c.address)}</td></tr><tr><th>電話番号</th><td>${escapeHtml(c.tel)}</td></tr><tr><th>FAX</th><td>${escapeHtml(c.fax)}</td></tr><tr><th>メールアドレス</th><td>${escapeHtml(c.email)}</td></tr><tr><th>担当者名</th><td>${escapeHtml(c.contactName)}</td></tr><tr><th>部署・役職</th><td>${escapeHtml(c.contactRole)}</td></tr><tr><th>おおよその食数</th><td>${escapeHtml(c.mealCount)}</td></tr><tr><th>支払の締め日</th><td>${escapeHtml(c.paymentDueDay)}</td></tr><tr><th>支払方法</th><td>${escapeHtml(c.paymentMethod)}</td></tr><tr><th>備考</th><td class="notes">${escapeHtml(c.notes)}</td></tr></tbody></table>`);
+  };
+
   useEffect(() => {
     if (!paymentMethodsLoaded) return;
     if (skipNextPaymentSave.current) {
@@ -564,6 +654,7 @@ function CustomerManagementApp() {
 
   const list = customers
     .filter((c) => c.status === view)
+    .filter((c) => !courseFilter || (courseFilter === '__none__' ? !c.deliveryCourse : (c.deliveryCourse || '') === courseFilter))
     .filter((c) => {
       if (!search.trim()) return true;
       const q = search.trim();
@@ -740,6 +831,17 @@ function CustomerManagementApp() {
             />
           </div>
 
+          <div className="cms-list-tools">
+            <select value={courseFilter} onChange={(e) => setCourseFilter(e.target.value)} aria-label="配送コースで絞り込み">
+              <option value="">配送コース：すべて</option>
+              {deliveryCourses.map((course) => <option key={course} value={course}>{course}</option>)}
+              <option value="__none__">配送コース：未設定</option>
+            </select>
+            <div className="cms-list-tools__actions">
+              <button className="cms-btn cms-btn--ghost cms-btn--sm" onClick={printCourseList}><Icon name="stickynote" size={13} /> 一覧を印刷</button>
+            </div>
+          </div>
+
           <div className="cms-list">
             {list.length === 0 && (
               <div className="cms-list-empty">
@@ -798,6 +900,12 @@ function CustomerManagementApp() {
                   />
                 </div>
                 <div className="cms-detail-header__actions">
+                  <button
+                    className="cms-btn cms-btn--ghost cms-btn--sm"
+                    onClick={() => printCustomer(selected)}
+                  >
+                    <Icon name="stickynote" size={13} /> 基本データを印刷
+                  </button>
                   <button
                     className="cms-btn cms-btn--accent cms-btn--sm"
                     onClick={saveBasicInfo}
@@ -936,6 +1044,26 @@ function CustomerManagementApp() {
                       onChange={(e) => setDraftField('mealCount', e.target.value)}
                     />
                   </Field>
+                  <div className="cms-grid--full" style={{ gridColumn: '1 / -1' }}>
+                    <Field label="配送コース" icon="package">
+                      <div className="cms-payment-row">
+                        <select value={dv.deliveryCourse || ''} onChange={(e) => setDraftField('deliveryCourse', e.target.value)}>
+                          <option value="">未選択</option>
+                          {deliveryCourses.map((course) => <option key={course} value={course}>{course}</option>)}
+                        </select>
+                        <button type="button" className="cms-btn cms-btn--ghost cms-btn--sm" onClick={() => setShowAddDeliveryCourse((v) => !v)}>
+                          <Icon name="plus" size={13} /> コースを追加
+                        </button>
+                      </div>
+                      {showAddDeliveryCourse && (
+                        <div className="cms-payment-add">
+                          <input type="text" placeholder="新しい配送コース名" value={newDeliveryCourse} onChange={(e) => setNewDeliveryCourse(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addDeliveryCourse()} autoFocus />
+                          <button className="cms-icon-btn" onClick={addDeliveryCourse} aria-label="追加を確定"><Icon name="check" size={16} /></button>
+                          <button className="cms-icon-btn" onClick={() => { setShowAddDeliveryCourse(false); setNewDeliveryCourse(''); }} aria-label="キャンセル"><Icon name="x" size={16} /></button>
+                        </div>
+                      )}
+                    </Field>
+                  </div>
                   <Field label="支払の締め日">
                     <input
                       type="text"
