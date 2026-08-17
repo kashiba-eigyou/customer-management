@@ -270,6 +270,23 @@
         .cms-list-tools__actions { display: flex; gap: 6px; }
         .cms-list-tools__actions .cms-btn { flex: 1; justify-content: center; }
         .cms-print-only { display: none; }
+        .cms-auth-screen { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: var(--bg); padding: 24px; }
+        .cms-auth-card { width: min(420px, 100%); background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 28px; box-shadow: 0 8px 28px rgba(42,39,34,.10); }
+        .cms-auth-card h1 { font-family: 'Shippori Mincho', serif; font-size: 22px; margin: 0 0 8px; }
+        .cms-auth-card p { color: var(--ink-soft); font-size: 13px; line-height: 1.7; margin: 0 0 18px; }
+        .cms-auth-card label { display: block; font-size: 12px; color: var(--ink-soft); margin: 12px 0 5px; }
+        .cms-auth-card input { width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; font-size: 14px; }
+        .cms-auth-card input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
+        .cms-auth-card .cms-btn { width: 100%; justify-content: center; margin-top: 18px; }
+        .cms-auth-error { color: var(--accent-ink); background: var(--accent-soft); padding: 8px 10px; border-radius: 6px; font-size: 12px; margin-top: 12px; }
+        .cms-course-manager { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+        .cms-course-chip { display: inline-flex; align-items: center; gap: 4px; background: var(--bg); border: 1px solid var(--line); border-radius: 999px; padding: 3px 6px 3px 9px; font-size: 11.5px; }
+        .cms-course-chip button { border: none; background: none; color: var(--ink-soft); cursor: pointer; display: inline-flex; padding: 2px; border-radius: 50%; }
+        .cms-course-chip button:hover { background: var(--accent-soft); color: var(--accent-ink); }
+        .cms-print-section { page-break-inside: avoid; margin-top: 7mm; }
+        .cms-print-section h2 { page-break-after: avoid; }
+        .cms-print-history td { white-space: pre-wrap; }
+
         @media print {
           @page { size: A4; margin: 14mm; }
           body { background: #fff !important; }
@@ -481,6 +498,65 @@ function CustomerManagementApp() {
   const skipNextDeliveryCoursesSave = useRef(false);
   const deliveryCourseSaveTimer = useRef(null);
   const [syncError, setSyncError] = useState(null);
+  const [authState, setAuthState] = useState('loading');
+  const [authMode, setAuthMode] = useState('login');
+  const [authPassword, setAuthPassword] = useState('');
+  const [authPasswordConfirm, setAuthPasswordConfirm] = useState('');
+  const [authError, setAuthError] = useState('');
+
+  const hashPassword = async (value) => {
+    const bytes = new TextEncoder().encode(value);
+    const digest = await crypto.subtle.digest('SHA-256', bytes);
+    return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, '0')).join('');
+  };
+
+  useEffect(() => {
+    window.db.collection('app').doc('security').get().then((snap) => {
+      if (snap.exists && snap.data().passwordHash) {
+        setAuthMode('login');
+      } else {
+        setAuthMode('setup');
+      }
+      setAuthState('ready');
+    }).catch((e) => {
+      setAuthError('認証設定を読み込めませんでした。Firebase接続を確認してください。');
+      setAuthState('ready');
+      setSyncError(String(e));
+    });
+  }, []);
+
+  const submitAuth = async (e) => {
+    e.preventDefault();
+    setAuthError('');
+    if (authPassword.length < 4) {
+      setAuthError('パスワードは4文字以上で入力してください。');
+      return;
+    }
+    if (authMode === 'setup' && authPassword !== authPasswordConfirm) {
+      setAuthError('確認用パスワードが一致しません。');
+      return;
+    }
+    try {
+      const ref = window.db.collection('app').doc('security');
+      const passwordHash = await hashPassword(authPassword);
+      if (authMode === 'setup') {
+        await ref.set({ passwordHash, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
+        setAuthState('authenticated');
+      } else {
+        const snap = await ref.get();
+        if (snap.exists && snap.data().passwordHash === passwordHash) {
+          setAuthState('authenticated');
+        } else {
+          setAuthError('パスワードが正しくありません。');
+        }
+      }
+      setAuthPassword('');
+      setAuthPasswordConfirm('');
+    } catch (err) {
+      setAuthError('認証処理に失敗しました。Firebase接続を確認してください。');
+      setSyncError(String(err));
+    }
+  };
 
   // 顧客データ：Firestoreの1つのドキュメントを全員で共有し、変更をリアルタイムに反映
   useEffect(() => {
@@ -574,6 +650,14 @@ function CustomerManagementApp() {
     return () => clearTimeout(deliveryCourseSaveTimer.current);
   }, [deliveryCourses, deliveryCoursesLoaded]);
 
+  const deleteDeliveryCourse = (course) => {
+    if (!window.confirm(`配送コース「${course}」を削除しますか？このコースを設定している顧客は未設定になります。`)) return;
+    setDeliveryCourses((prev) => prev.filter((item) => item !== course));
+    setCustomers((prev) => prev.map((c) => c.deliveryCourse === course ? { ...c, deliveryCourse: '' } : c));
+    if (courseFilter === course) setCourseFilter('');
+    if (dv.deliveryCourse === course) setDraftField('deliveryCourse', '');
+  };
+
   const addDeliveryCourse = () => {
     const name = newDeliveryCourse.trim();
     if (!name) return;
@@ -587,18 +671,21 @@ function CustomerManagementApp() {
   const openPrintWindow = (title, body) => {
     const w = window.open('', '_blank');
     if (!w) return;
-    w.document.write(`<!doctype html><html lang="ja"><head><meta charset="UTF-8"><title>${escapeHtml(title)}</title><style>@page{size:A4;margin:14mm}*{box-sizing:border-box}body{font-family:Arial,'Noto Sans JP',sans-serif;color:#111;margin:0}h1{font-size:22px;margin:0 0 5mm}h2{font-size:15px;margin:6mm 0 2mm;border-bottom:1px solid #333;padding-bottom:2mm}.meta{font-size:11px;color:#555;margin-bottom:5mm}table{width:100%;border-collapse:collapse;font-size:11px}th,td{border:1px solid #999;padding:6px 7px;text-align:left;vertical-align:top}th{background:#eee;width:24%}.notes{white-space:pre-wrap;min-height:18mm}.print-list th,.print-list td{padding:5px 6px}@media print{button{display:none}}</style></head><body>${body}</body></html>`);
+    w.document.write(`<!doctype html><html lang="ja"><head><meta charset="UTF-8"><title>${escapeHtml(title)}</title><style>@page{size:A4;margin:12mm 13mm}*{box-sizing:border-box}body{font-family:Arial,'Noto Sans JP',sans-serif;color:#111;margin:0;font-size:10.5pt;line-height:1.55}h1{font-size:21pt;margin:0 0 2mm;border-bottom:2px solid #333;padding-bottom:2mm}h2{font-size:13pt;margin:6mm 0 2mm;border-bottom:1px solid #555;padding-bottom:1mm;page-break-after:avoid}.meta{font-size:9pt;color:#555;margin-bottom:4mm}.section{page-break-inside:avoid;margin-bottom:5mm}table{width:100%;border-collapse:collapse;font-size:9.5pt;table-layout:fixed}th,td{border:1px solid #999;padding:5px 6px;text-align:left;vertical-align:top;overflow-wrap:anywhere}th{background:#f0f0f0;width:24%;font-weight:700}.notes{white-space:pre-wrap;min-height:15mm}.print-list{font-size:8.5pt}.print-list th,.print-list td{padding:4px 5px}.print-list th:nth-child(1){width:6%}.print-list th:nth-child(2){width:20%}.print-list th:nth-child(3){width:13%}.print-list th:nth-child(4){width:11%}.print-list th:nth-child(5){width:25%}.print-list th:nth-child(6){width:13%}.print-list th:nth-child(7){width:12%}.history td{white-space:pre-wrap}.menu td:nth-child(2){text-align:right;width:18%}.menu td:nth-child(3){width:12%}tr{page-break-inside:avoid}@media print{button{display:none}}</style></head><body>${body}</body></html>`);
     w.document.close();
     w.focus();
-    setTimeout(() => w.print(), 250);
+    setTimeout(() => w.print(), 300);
   };
   const printCourseList = () => {
-    const label = courseFilter || '全コース';
+    const label = courseFilter === '__none__' ? '未設定' : (courseFilter || '全コース');
     const rows = list.map((c, i) => `<tr><td>${i + 1}</td><td>${escapeHtml(c.companyName || '（会社名未入力）')}</td><td>${escapeHtml(c.deliveryCourse || '未設定')}</td><td>${escapeHtml(c.postalCode)}</td><td>${escapeHtml(c.address)}</td><td>${escapeHtml(c.tel)}</td><td>${escapeHtml(c.contactName)}</td></tr>`).join('');
-    openPrintWindow(`配送コース別顧客一覧｜${label}`, `<h1>配送コース別 顧客一覧</h1><div class="meta">対象コース：${escapeHtml(label)}　／　${new Date().toLocaleDateString('ja-JP')}</div><table class="print-list"><thead><tr><th>No.</th><th>会社名</th><th>配送コース</th><th>郵便番号</th><th>住所</th><th>電話番号</th><th>担当者</th></tr></thead><tbody>${rows || '<tr><td colspan="7">該当する顧客はありません。</td></tr>'}</tbody></table>`);
+    openPrintWindow(`配送コース別顧客一覧｜${label}`, `<h1>配送コース別 顧客一覧</h1><div class="meta">対象コース：${escapeHtml(label)}　／　印刷日：${new Date().toLocaleDateString('ja-JP')}　／　${list.length}件</div><table class="print-list"><thead><tr><th>No.</th><th>会社名</th><th>配送コース</th><th>郵便番号</th><th>住所</th><th>電話番号</th><th>担当者</th></tr></thead><tbody>${rows || '<tr><td colspan="7">該当する顧客はありません。</td></tr>'}</tbody></table>`);
   };
   const printCustomer = (c) => {
-    openPrintWindow(`顧客基本データ｜${c.companyName || '未入力'}`, `<h1>顧客基本データ</h1><div class="meta">印刷日：${new Date().toLocaleDateString('ja-JP')}</div><table><tbody><tr><th>会社名</th><td>${escapeHtml(c.companyName)}</td></tr><tr><th>取引先コード</th><td>${escapeHtml(c.customerCode)}</td></tr><tr><th>配送コース</th><td>${escapeHtml(c.deliveryCourse || '未設定')}</td></tr><tr><th>郵便番号</th><td>${escapeHtml(c.postalCode)}</td></tr><tr><th>住所</th><td>${escapeHtml(c.address)}</td></tr><tr><th>電話番号</th><td>${escapeHtml(c.tel)}</td></tr><tr><th>FAX</th><td>${escapeHtml(c.fax)}</td></tr><tr><th>メールアドレス</th><td>${escapeHtml(c.email)}</td></tr><tr><th>担当者名</th><td>${escapeHtml(c.contactName)}</td></tr><tr><th>部署・役職</th><td>${escapeHtml(c.contactRole)}</td></tr><tr><th>おおよその食数</th><td>${escapeHtml(c.mealCount)}</td></tr><tr><th>支払の締め日</th><td>${escapeHtml(c.paymentDueDay)}</td></tr><tr><th>支払方法</th><td>${escapeHtml(c.paymentMethod)}</td></tr><tr><th>備考</th><td class="notes">${escapeHtml(c.notes)}</td></tr></tbody></table>`);
+    const basicRows = `<tr><th>会社名</th><td>${escapeHtml(c.companyName)}</td></tr><tr><th>取引先コード</th><td>${escapeHtml(c.customerCode)}</td></tr><tr><th>配送コース</th><td>${escapeHtml(c.deliveryCourse || '未設定')}</td></tr><tr><th>郵便番号</th><td>${escapeHtml(c.postalCode)}</td></tr><tr><th>住所</th><td>${escapeHtml(c.address)}</td></tr><tr><th>電話番号</th><td>${escapeHtml(c.tel)}</td></tr><tr><th>FAX</th><td>${escapeHtml(c.fax)}</td></tr><tr><th>メールアドレス</th><td>${escapeHtml(c.email)}</td></tr><tr><th>担当者名</th><td>${escapeHtml(c.contactName)}</td></tr><tr><th>部署・役職</th><td>${escapeHtml(c.contactRole)}</td></tr><tr><th>おおよその食数</th><td>${escapeHtml(c.mealCount)}</td></tr><tr><th>支払の締め日</th><td>${escapeHtml(c.paymentDueDay)}</td></tr><tr><th>支払方法</th><td>${escapeHtml(c.paymentMethod)}</td></tr>`;
+    const menuRows = (c.menuItems || []).map((item, i) => `<tr><td>${i + 1}</td><td>${escapeHtml(item.name || '名称未設定')}</td><td>${escapeHtml(yen(item.price))}</td><td>${escapeHtml(TAX_LABEL[item.taxType] || '')}</td></tr>`).join('');
+    const historyRows = (c.historyLog || []).map((h) => `<tr><td>${escapeHtml(h.date)}</td><td>${escapeHtml(h.itemName || '変更')}</td><td>${escapeHtml(h.oldPrice == null ? '' : yen(h.oldPrice))} → ${escapeHtml(h.newPrice == null ? '' : yen(h.newPrice))}</td><td>${escapeHtml(h.memo || '')}</td></tr>`).join('');
+    openPrintWindow(`顧客基本データ｜${c.companyName || '未入力'}`, `<h1>顧客基本データ</h1><div class="meta">${escapeHtml(c.companyName || '会社名未入力')}　／　印刷日：${new Date().toLocaleDateString('ja-JP')}</div><div class="section"><h2>基本情報</h2><table><tbody>${basicRows}</tbody></table></div><div class="section"><h2>注文メニュー</h2><table class="menu"><thead><tr><th>No.</th><th>メニュー名</th><th>価格</th><th>税区分</th></tr></thead><tbody>${menuRows || '<tr><td colspan="4">登録された注文メニューはありません。</td></tr>'}</tbody></table></div><div class="section"><h2>備考・注意事項</h2><table><tbody><tr><td class="notes">${escapeHtml(c.notes || '記載なし')}</td></tr></tbody></table></div><div class="section"><h2>取引先変更履歴</h2><table class="history"><thead><tr><th>日付</th><th>項目</th><th>価格変更</th><th>内容・メモ</th></tr></thead><tbody>${historyRows || '<tr><td colspan="4">変更履歴はありません。</td></tr>'}</tbody></table></div>`);
   };
 
   useEffect(() => {
@@ -777,6 +864,26 @@ function CustomerManagementApp() {
     }
     setConfirmAction(null);
   };
+
+  if (authState !== 'authenticated') {
+    return (
+      <div className="cms-auth-screen">
+        <form className="cms-auth-card" onSubmit={submitAuth}>
+          <h1>株式会社料理かしば</h1>
+          <p>{authState === 'loading' ? '認証設定を確認しています。' : authMode === 'setup' ? '初回アクセスです。顧客情報を守るパスワードを設定してください。' : '顧客情報を表示するにはパスワードが必要です。'}</p>
+          {authState !== 'loading' && (
+            <>
+              <label htmlFor="auth-password">パスワード</label>
+              <input id="auth-password" type="password" value={authPassword} onChange={(e) => setAuthPassword(e.target.value)} autoFocus autoComplete={authMode === 'setup' ? 'new-password' : 'current-password'} />
+              {authMode === 'setup' && <><label htmlFor="auth-password-confirm">パスワード（確認）</label><input id="auth-password-confirm" type="password" value={authPasswordConfirm} onChange={(e) => setAuthPasswordConfirm(e.target.value)} autoComplete="new-password" /></>}
+              <button className="cms-btn cms-btn--accent" type="submit">{authMode === 'setup' ? 'パスワードを設定して開始' : 'ログイン'}</button>
+              {authError && <div className="cms-auth-error">{authError}</div>}
+            </>
+          )}
+        </form>
+      </div>
+    );
+  }
 
   return (
     <div className="cms-app">
@@ -1062,6 +1169,14 @@ function CustomerManagementApp() {
                           <button className="cms-icon-btn" onClick={() => { setShowAddDeliveryCourse(false); setNewDeliveryCourse(''); }} aria-label="キャンセル"><Icon name="x" size={16} /></button>
                         </div>
                       )}
+                      <div className="cms-course-manager" aria-label="配送コースの管理">
+                        {deliveryCourses.map((course) => (
+                          <span className="cms-course-chip" key={course}>
+                            {course}
+                            <button type="button" onClick={() => deleteDeliveryCourse(course)} aria-label={`${course}を削除`} title="このコースを削除"><Icon name="x" size={12} /></button>
+                          </span>
+                        ))}
+                      </div>
                     </Field>
                   </div>
                   <Field label="支払の締め日">
