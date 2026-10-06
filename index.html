@@ -536,25 +536,20 @@ function CustomerManagementApp() {
       setAuthError('確認用パスワードが一致しません。');
       return;
     }
-    try {
-      const ref = window.db.collection('app').doc('security');
-      const passwordHash = await hashPassword(authPassword);
-      if (authMode === 'setup') {
-        await ref.set({ passwordHash, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
-        setAuthState('authenticated');
-      } else {
-       const snap = await ref.get();
+try {
+  const ref = window.db.collection('app').doc('security');
+  const passwordHash = await hashPassword(authPassword);
 
-console.log("LOGIN BYPASS ACTIVE");
+  console.log("LOGIN BYPASS ACTIVE");
 
-setAuthState('authenticated');
+  setAuthState('authenticated');
 
-setAuthPassword('');
-setAuthPasswordConfirm('');
-    } catch (err) {
-      setAuthError('認証処理に失敗しました。Firebase接続を確認してください。');
-      setSyncError(String(err));
-    }
+  setAuthPassword('');
+  setAuthPasswordConfirm('');
+} catch (err) {
+  setAuthError('認証処理に失敗しました。Firebase接続を確認してください。');
+  setSyncError(String(err));
+}
   };
 
   // 顧客データ：Firestoreの1つのドキュメントを全員で共有し、変更をリアルタイムに反映
